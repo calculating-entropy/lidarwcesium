@@ -1,0 +1,19 @@
+# Node dependencies
+node_modules/
+build/
+dist/
+
+# Python virtual environments and cache
+venv/
+venv310/
+backend/venv310/
+__pycache__/
+*.pyc
+
+# System files
+.DS_Store
+
+# Environment files
+.env
+*.env
+
