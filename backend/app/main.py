@@ -4,6 +4,8 @@ import time
 from fastapi import FastAPI, File, UploadFile, HTTPException, BackgroundTasks
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+from fastapi.responses import JSONResponse
+from fastapi import Form
 from app.config import RAW_OBJ_DIR, PROCESSED_TILE_DIR
 from app.worker import process_obj
 from app.measure import measure_obj
@@ -29,7 +31,13 @@ app.mount("/raw_objs", StaticFiles(directory=RAW_OBJ_DIR), name="raw_objs")
 uploaded_objs = []
 
 @app.post("/upload_obj/")
-async def upload_obj(file: UploadFile = File(...), background_tasks: BackgroundTasks = None):
+async def upload_obj(
+    file: UploadFile = File(...),
+    background_tasks: BackgroundTasks = None,
+    latitude: float = Form(None),
+    longitude: float = Form(None),
+):
+    print("Received latitude:", latitude, "longitude:", longitude)
     if not file.filename.endswith(".obj"):
         raise HTTPException(status_code=400, detail="Only .obj files allowed")
     unique_id = str(uuid.uuid4())
@@ -38,18 +46,24 @@ async def upload_obj(file: UploadFile = File(...), background_tasks: BackgroundT
     with open(raw_path, "wb") as f:
         f.write(await file.read())
     ts = time.time()
-    # Store metadata with timestamp for listing
+    # Store metadata with timestamp and geo
     uploaded_objs.append({
         "filename": filename,
-        "timestamp": ts
+        "timestamp": ts,
+        "latitude": latitude,
+        "longitude": longitude
     })
-    # Start conversion in background
     background_tasks.add_task(process_obj, filename)
-    return {"message": "File uploaded, processing started", "filename": filename, "timestamp": ts}
+    return {
+        "message": "File uploaded, processing started",
+        "filename": filename,
+        "timestamp": ts,
+        "latitude": latitude,
+        "longitude": longitude
+    }
 
 @app.get("/list_objs/")
 def list_objs():
-    # List all OBJs with download URL and timestamp
     objs = []
     for entry in uploaded_objs:
         download_url = f"/raw_objs/{entry['filename']}"
@@ -58,9 +72,32 @@ def list_objs():
             "filename": entry['filename'],
             "timestamp": entry['timestamp'],
             "download_url": download_url,
-            "measure_url": measure_url
+            "measure_url": measure_url,
+            "latitude": entry.get("latitude"),
+            "longitude": entry.get("longitude")
         })
     return {"objs": objs}
+
+@app.get("/list_objs/")
+def list_objs():
+    objs = []
+    for entry in uploaded_objs:
+        download_url = f"/raw_objs/{entry['filename']}"
+        measure_url = f"/measure/{entry['filename']}"
+        gltf_url = f"/raw_objs/{entry['gltf_filename']}" if entry.get('gltf_filename') else None
+        
+        objs.append({
+            "filename": entry['filename'],
+            "gltf_filename": entry.get('gltf_filename'),
+            "timestamp": entry['timestamp'],
+            "download_url": download_url,
+            "gltf_url": gltf_url,
+            "measure_url": measure_url,
+            "latitude": entry.get("latitude"),
+            "longitude": entry.get("longitude")
+        })
+    return {"objs": objs}
+
 
 @app.get("/measure/{filename}")
 def get_measurements(filename: str):
