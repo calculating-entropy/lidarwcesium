@@ -5,7 +5,7 @@ import ReactThreeObjViewer from "../components/ReactThreeObjViewer";
 export default function ModelViewer() {
   const [searchParams] = useSearchParams();
   const file = searchParams.get("file");
-  const objFileUrl = file ? `http://localhost:8000/raw_objs/${file}` : null;
+  const objFileUrl = file ? `/api/raw_objs/${file}` : null;
 
   if (!objFileUrl)
     return (

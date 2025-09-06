@@ -22,7 +22,8 @@ export default function CesiumViewer() {
     // Wait for viewer to be ready before fetching assets
     const loadAssets = async () => {
       try {
-        const response = await fetch("http://localhost:8000/list_objs/");
+        // const response = await fetch("http://localhost:8000/list_objs/");
+        const response = await fetch(`/api/list_objs/`);
         const data = await response.json();
         const loadedAssets = data.objs || [];
         
@@ -55,13 +56,13 @@ export default function CesiumViewer() {
 
           try {
             // Check if glTF exists
-            const gltfResponse = await fetch(`http://localhost:8000${gltfPath}`, { method: 'HEAD' });
+            const gltfResponse = await fetch(`/api${gltfPath}`, { method: 'HEAD' });
             
             // In your CesiumViewer, replace the model loading section:
 if (gltfResponse.ok) {
   console.log(`Loading 3D model: ${gltfPath}`);
   entityOptions.model = {
-    uri: `http://localhost:8000${gltfPath}`,
+    uri: `/api${gltfPath}`,
     scale: 2.0,                    // Increase scale for better visibility
     minimumPixelSize: 128,         // Ensure minimum visibility (increased from 64)
     maximumScale: 10.0,           // Allow larger scaling when zoomed in
