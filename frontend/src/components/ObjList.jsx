@@ -21,12 +21,13 @@ export default function ObjList({ objs, onMeasure }) {
             <td>{new Date(obj.timestamp * 1000).toLocaleString()}</td>
             <td>
               <a
-                href={`${API_URL}${obj.download_url}`}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Download
-              </a>
+  href={`${API_URL}${obj.download_url.startsWith('/') ? obj.download_url : '/' + obj.download_url}`}
+  target="_blank"
+  rel="noopener noreferrer"
+>
+  Download
+</a>
+
             </td>
             <td>
               <button onClick={() => onMeasure(obj.filename)}>Get Measurements</button>
