@@ -1,52 +1,78 @@
-// export const API_URL = 'http://localhost:8000';
+import config from './config';
 
-// export async function listObjs() {
-//     const res = await fetch(`${API_URL}/list_objs/`);
-//     return res.json();
-// }
+export const API_URL = config.apiUrl;
 
-// export async function uploadObj(file) {
-//     const formData = new FormData();
-//     formData.append('file', file);
-//     const res = await fetch(`${API_URL}/upload_obj/`, {
-//         method: 'POST',
-//         body: formData,
-//     });
-//     return res.json();
-// }
-
-// export async function getMeasurements(filename) {
-//     const res = await fetch(`${API_URL}/measure/${filename}`);
-//     return res.json();
-// }
-
-// export async function listAssets() {
-//     const res = await fetch(`${API_URL}/assets/`);
-//     return res.json();
-// }
-export const API_URL = '/api';
-
-export async function listObjs() {
-    const res = await fetch(`${API_URL}/list_objs/`);
-    return res.json();
+// Helper function for handling API responses
+async function handleResponse(response) {
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ detail: 'Unknown error occurred' }));
+        throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+    }
+    return response.json();
 }
 
-export async function uploadObj(file) {
-    const formData = new FormData();
-    formData.append('file', file);
-    const res = await fetch(`${API_URL}/upload_obj/`, {
-        method: 'POST',
-        body: formData,
-    });
-    return res.json();
+export async function listObjs() {
+    try {
+        const res = await fetch(`${API_URL}/list_objs/`);
+        return await handleResponse(res);
+    } catch (error) {
+        console.error('Error listing objects:', error);
+        throw new Error(`Failed to fetch objects: ${error.message}`);
+    }
+}
+
+export async function uploadObj(file, latitude = null, longitude = null) {
+    try {
+        if (!file) {
+            throw new Error('No file provided');
+        }
+        
+        if (!file.name.endsWith('.obj')) {
+            throw new Error('Only .obj files are allowed');
+        }
+        
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        if (latitude !== null) {
+            formData.append('latitude', latitude.toString());
+        }
+        if (longitude !== null) {
+            formData.append('longitude', longitude.toString());
+        }
+        
+        const res = await fetch(`${API_URL}/upload_obj/`, {
+            method: 'POST',
+            body: formData,
+        });
+        
+        return await handleResponse(res);
+    } catch (error) {
+        console.error('Error uploading object:', error);
+        throw new Error(`Failed to upload file: ${error.message}`);
+    }
 }
 
 export async function getMeasurements(filename) {
-    const res = await fetch(`${API_URL}/measure/${filename}`);
-    return res.json();
+    try {
+        if (!filename) {
+            throw new Error('Filename is required');
+        }
+        
+        const res = await fetch(`${API_URL}/measure/${encodeURIComponent(filename)}`);
+        return await handleResponse(res);
+    } catch (error) {
+        console.error('Error getting measurements:', error);
+        throw new Error(`Failed to get measurements: ${error.message}`);
+    }
 }
 
 export async function listAssets() {
-    const res = await fetch(`${API_URL}/assets/`);
-    return res.json();
+    try {
+        const res = await fetch(`${API_URL}/assets/`);
+        return await handleResponse(res);
+    } catch (error) {
+        console.error('Error listing assets:', error);
+        throw new Error(`Failed to fetch assets: ${error.message}`);
+    }
 }

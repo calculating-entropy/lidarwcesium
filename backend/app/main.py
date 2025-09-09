@@ -37,46 +37,66 @@ async def upload_obj(
     latitude: float = Form(None),
     longitude: float = Form(None),
 ):
-    print("Received latitude:", latitude, "longitude:", longitude)
-    if not file.filename.endswith(".obj"):
-        raise HTTPException(status_code=400, detail="Only .obj files allowed")
-    unique_id = str(uuid.uuid4())
-    filename = f"{unique_id}.obj"
-    raw_path = os.path.join(RAW_OBJ_DIR, filename)
-    with open(raw_path, "wb") as f:
-        f.write(await file.read())
-    ts = time.time()
-    # Store metadata with timestamp and geo
-    uploaded_objs.append({
-        "filename": filename,
-        "timestamp": ts,
-        "latitude": latitude,
-        "longitude": longitude
-    })
-    background_tasks.add_task(process_obj, filename)
-    return {
-        "message": "File uploaded, processing started",
-        "filename": filename,
-        "timestamp": ts,
-        "latitude": latitude,
-        "longitude": longitude
-    }
-
-@app.get("/list_objs/")
-def list_objs():
-    objs = []
-    for entry in uploaded_objs:
-        download_url = f"/raw_objs/{entry['filename']}"
-        measure_url = f"/measure/{entry['filename']}"
-        objs.append({
-            "filename": entry['filename'],
-            "timestamp": entry['timestamp'],
-            "download_url": download_url,
-            "measure_url": measure_url,
-            "latitude": entry.get("latitude"),
-            "longitude": entry.get("longitude")
+    try:
+        print("Received latitude:", latitude, "longitude:", longitude)
+        
+        # Validate file
+        if not file.filename:
+            raise HTTPException(status_code=400, detail="No filename provided")
+        
+        if not file.filename.endswith(".obj"):
+            raise HTTPException(status_code=400, detail="Only .obj files allowed")
+        
+        # Check file size (limit to 100MB)
+        content = await file.read()
+        if len(content) > 100 * 1024 * 1024:  # 100MB limit
+            raise HTTPException(status_code=413, detail="File too large. Maximum size is 100MB")
+        
+        if len(content) == 0:
+            raise HTTPException(status_code=400, detail="Uploaded file is empty")
+        
+        # Validate coordinates if provided
+        if latitude is not None and (latitude < -90 or latitude > 90):
+            raise HTTPException(status_code=400, detail="Latitude must be between -90 and 90")
+        
+        if longitude is not None and (longitude < -180 or longitude > 180):
+            raise HTTPException(status_code=400, detail="Longitude must be between -180 and 180")
+        
+        unique_id = str(uuid.uuid4())
+        filename = f"{unique_id}.obj"
+        raw_path = os.path.join(RAW_OBJ_DIR, filename)
+        
+        # Write file
+        with open(raw_path, "wb") as f:
+            f.write(content)
+        
+        ts = time.time()
+        # Store metadata with timestamp and geo
+        uploaded_objs.append({
+            "filename": filename,
+            "timestamp": ts,
+            "latitude": latitude,
+            "longitude": longitude
         })
-    return {"objs": objs}
+        
+        # Start background processing
+        if background_tasks:
+            background_tasks.add_task(process_obj, filename)
+        
+        return {
+            "message": "File uploaded, processing started",
+            "filename": filename,
+            "timestamp": ts,
+            "latitude": latitude,
+            "longitude": longitude
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error in upload_obj: {e}")
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
 
 @app.get("/list_objs/")
 def list_objs():

@@ -3,3 +3,5 @@ uvicorn[standard]
 python-multipart
 open3d
 numpy
+trimesh
+pygltflib
